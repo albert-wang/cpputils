@@ -17,56 +17,92 @@ namespace Engine
 		template<typename Ch>
 		class MemorySink : public boost::iostreams::device<Detail::MemoryCategory, Ch>
 		{
+			static const size_t BUFFER_SIZE = 32;
+			struct Node
+			{
+				Ch * buffer;
+				Node * next;
+				boost::uint8_t length;
+			};
 		public:
 			MemorySink(Memory::StackScope& scope)
 				:scope(&scope)
 				,base(NULL)
+				,last(NULL)
+				,compiled(NULL)
 				,length(0)
 			{}
 
 			std::streamsize write(const Ch * s, std::streamsize n)
 			{
-				if (!scope) 
+				if (compiled) 
 				{
 					return 0;
 				}
 
-				Ch * target = scope->createArray<Ch>(n);
+				Node * node = scope->createPOD<Node>();
+				node->buffer = scope->createArray<Ch>(n);
+				node->length = n;
+				node->next = NULL;
 
-				memcpy(target, s, sizeof(Ch) * n);
-				length += n;
-
-				if (!base)
+				if (last)
 				{
-					base = target;
+					last->next = node;
+					last = node;
+				}
+				else 
+				{
+					assert(!base);
+					base = node;
+					last = node;
 				}
 
+				memcpy(node->buffer, s, sizeof(Ch) * n);
+				length += n;
 				return n;
 			}
 
 			std::streamsize optimal_buffer_size() const
 			{
-				return 32;
+				return BUFFER_SIZE;
 			}
 
 			const Ch * data()
 			{
-				return base;
+				if (!compiled)
+				{
+					finish();
+				}
+
+				return compiled;
 			}
 
 			size_t size() const
 			{
 				return length;
 			}
-
-			void zeroTerminate() 
-			{
-				write("\0", 1);
-				scope = NULL;
-			}
 		private:
+			void finish()
+			{
+				compiled = scope->createArray<Ch>(length + 1);
+
+				Node * current = base;
+				size_t written = 0;
+
+				while(current)
+				{
+					memcpy(compiled + written, current->buffer, sizeof(Ch) * current->length);
+					written += current->length;
+					current = current->next;
+				}
+
+				compiled[written] = '\0';
+			}
+
 			Memory::StackScope * scope;
-			Ch * base;
+			Node * base;
+			Node * last;
+			Ch * compiled; 
 			size_t length;
 		};
 
@@ -92,7 +128,6 @@ namespace Engine
 			{
 				Stream * self = static_cast<Stream *>(this);
 				self->flush();
-				(*self)->zeroTerminate();
 				return (*self)->data();
 			}
 		};

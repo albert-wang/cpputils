@@ -3,6 +3,7 @@
 #include <boost/static_assert.hpp>
 #include <boost/utility.hpp>
 #include <boost/type_traits.hpp>
+#include <boost/preprocessor.hpp>
 
 #include <cassert>
 #include <utility>
@@ -65,7 +66,7 @@ namespace Engine
 				FinalizerMethod finalizer;
 				FinalizerEntry * next;
 
-#if !defined(__LP64__) && !defined(_DEBUG)
+#if !defined(__LP64__)
 				boost::uint8_t padding[8];
 #endif
 			};
@@ -100,74 +101,57 @@ namespace Engine
 			explicit StackScope(StackAllocator * base);
 			~StackScope();
 
+//A few local defines to help out
+#define ENABLE_POD(T) typename boost::enable_if<boost::is_pod<T>, T *>::type
+#define DISABLE_POD(T) typename boost::disable_if<boost::is_pod<T>, T *>::type
+#define FORWARD_ARG(z, n, data) BOOST_PP_CAT(A, n)&& BOOST_PP_CAT(a, n)
+
+#define POD_CREATE(n) template<typename T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, typename A)> \
+	ENABLE_POD(T) create(BOOST_PP_ENUM(n, FORWARD_ARG, ~)) { T * result = base->allocate<T>(1); new (result) T(BOOST_PP_ENUM_PARAMS(n, a)); return result; } \
+	template<typename T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, typename A)> T * createPOD(BOOST_PP_ENUM(n, FORWARD_ARG, ~)) { T * result = base->allocate<T>(1); new (result) T(BOOST_PP_ENUM_PARAMS(n, a)); return result; }
 			//Basic creates
-			template<typename T, typename U>
-			typename boost::enable_if< 
-				boost::is_pod<T>, 
-				T *
-			>::type create(U&& arg)
+			template<typename T>
+			ENABLE_POD(T) create()
 			{
 				T * result = base->allocate<T>(1);
-				new (result) T(arg);
 				return result;
 			}
 
 			template<typename T>
-			typename boost::enable_if< 
-				boost::is_pod<T>, 
-				T *
-			>::type createArray(size_t size)
+			T * createPOD() 
+			{
+				T * result = base->allocate<T>(1);
+				return result;
+			}
+
+#define BOOST_PP_LOCAL_LIMITS (1, 9)
+#define BOOST_PP_LOCAL_MACRO(n) POD_CREATE(n)
+#include BOOST_PP_LOCAL_ITERATE()
+#undef POD_CREATE
+#undef BOOST_PP_LOCAL_MACRO
+#undef BOOST_PP_LOCAL_LIMITS
+
+			template<typename T>
+			ENABLE_POD(T) createArray(size_t size)
 			{
 				T * result = base->allocate<T>(size);
 				return result;
 			}
 
-			template<typename T, typename U>
-			typename boost::disable_if< 
-				boost::is_pod<T>, 
-				T *
-			>::type create(U&& arg)
-			{
-				FinalizerEntry * entry = base->allocate<FinalizerEntry>(1);
-				entry->finalizer = &destructor<T>;
-				entry->next = finalizer;
-				finalizer = entry;
+#define NPOD_CREATE(n) template<typename T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, typename A)> \
+	DISABLE_POD(T) create(BOOST_PP_ENUM(n, FORWARD_ARG, ~)) { 										 \
+		FinalizerEntry * entry = base->allocate<FinalizerEntry>(1); entry->finalizer = &destructor<T>; entry->next = finalizer; finalizer = entry; \
+		T * result = base->allocate<T>(1); new (result) T(BOOST_PP_ENUM_PARAMS(n, a)); return result; }
 
-				T * result = base->allocate<T>(1);
-
-				//XXX: should use std::forward
-				new (result) T(arg);
-				return result;
-			}
-
-			template<typename T, typename U>
-			typename boost::disable_if< 
-				boost::is_pod<T>, 
-				T *
-			>::type createArray(size_t size, U&& proto)
-			{
-				FinalizerEntry * entry = base->allocate<FinalizerEntry>(1);
-				entry->finalizer = &destructArray<T>;
-				entry->next = finalizer;
-				finalizer = entry;
-
-				ArrayEntry * arr = base->allocate<ArrayEntry>(1);
-				arr->size = size;
-
-				T * result = base->allocate<T>(size);
-				for (size_t i = 0; i < result; ++i)
-				{
-					new (result + i) T(proto);
-				}
-
-				return result;
-			}
+#define BOOST_PP_LOCAL_LIMITS (0, 9)
+#define BOOST_PP_LOCAL_MACRO(n) NPOD_CREATE(n)
+#include BOOST_PP_LOCAL_ITERATE()
+#undef NPOD_CREATE
+#undef BOOST_PP_LOCAL_MACRO
+#undef BOOST_PP_LOCAL_LIMITS
 
 			template<typename T>
-			typename boost::disable_if< 
-				boost::is_pod<T>, 
-				T *
-			>::type createArray(size_t size)
+			DISABLE_POD(T) createArray(size_t size)
 			{
 				FinalizerEntry * entry = base->allocate<FinalizerEntry>(1);
 				entry->finalizer = &destructArray<T>;
@@ -188,7 +172,6 @@ namespace Engine
 		private:
 			StackAllocator * base;
 			StackAllocator::Mark mark;
-
 			FinalizerEntry * finalizer;
 		};
 	}

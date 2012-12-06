@@ -1,39 +1,44 @@
 #include <iostream>
-#include "stackalloc.h"
+#include <boost/format.hpp>
+#include <string>
 
-static size_t idalloc = 0;
+#include "stackalloc.h"
+#include "stackstream.h"
+
 struct RAII
 {
-	RAII()
-		:id(idalloc++)
-	{
-		std::cout << "Construct RAII: " << id << "\n";
-	}
-	explicit RAII(size_t i)
+	size_t id;
+
+	RAII(size_t i)
 		:id(i)
 	{
-		std::cout << "Construct RAII: " << i << "\n";
+		std::cout << "RAII: " << id << "\n";
 	}
 
 	~RAII()
 	{
-		std::cout << "Destruct RAII: " << id << "\n";
+		std::cout << "~RAII: " << id << "\n";
 	}
-
-	size_t id;
 };
 
 int main(int argc, char * argv[])
 {
 	using namespace Engine::Memory;
+	using namespace Engine;
 
 	//16KB
 	StackAllocator alloc(16 * 1024 * 1024);
 	StackScope scope(&alloc);
 
-	scope.createArray<RAII>(42);
-	size_t * res = scope.create<size_t>(42);
-	std::cout << *res << "\n";
+	Engine::WideMemoryStream sink(scope);
+
+	for (size_t i = 0; i < 32; ++i)
+	{
+		scope.create<RAII>(i);
+		sink << L"First: " << i << L"\n";
+	}
+
+	std::wcout << sink.c_str();
 
 	return 0;
 }

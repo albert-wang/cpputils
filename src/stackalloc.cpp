@@ -1,5 +1,6 @@
 #include "stackalloc.h"
 #include <memory.h>
+#include <iostream>
 
 namespace Engine
 {
@@ -26,6 +27,7 @@ namespace Engine
 
 		void StackAllocator::release(StackAllocator::Mark b)
 		{
+			std::cout << "Released " << current - reinterpret_cast<boost::uint8_t *>(b) << " bytes\n";
 			current = reinterpret_cast<boost::uint8_t *>(b);
 		}
 	}
