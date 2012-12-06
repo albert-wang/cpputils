@@ -7,6 +7,7 @@
 #include <cassert>
 #include <utility>
 
+#pragma once
 namespace Engine
 {
 	namespace Memory
@@ -32,7 +33,6 @@ namespace Engine
 				T * result = reinterpret_cast<T *>(current);
 				
 				//The current pointer is always resting at a multiple of 16 bytes.
-				
 				if ((sizeof(T) * count) % 16 != 0)
 				{	
 					current += (((sizeof(T) * count) / 16) + 1) * 16;
