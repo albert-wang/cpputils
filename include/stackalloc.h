@@ -138,6 +138,13 @@ namespace Engine
 				return result;
 			}
 
+			template<typename T>
+			T * createArrayPOD(size_t size)
+			{
+				T * result = base->allocate<T>(size);
+				return result;
+			}
+
 #define NPOD_CREATE(n) template<typename T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, typename A)> \
 	DISABLE_POD(T) create(BOOST_PP_ENUM(n, FORWARD_ARG, ~)) { 										 \
 		FinalizerEntry * entry = base->allocate<FinalizerEntry>(1); entry->finalizer = &destructor<T>; entry->next = finalizer; finalizer = entry; \
