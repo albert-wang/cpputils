@@ -1,54 +1,69 @@
 #include <iostream>
 #include <boost/format.hpp>
 #include <string>
+#include <sys/time.h>
 
 #include "stackalloc.h"
 #include "stackstream.h"
 #include "tinyformat.h"
 
-struct RAII
+class Microprofiler
 {
-	size_t id;
-
-	RAII(size_t i)
-		:id(i)
+public:
+	Microprofiler(const char * name)
+		:name(name)
 	{
-		std::cout << "RAII: " << id << "\n";
+		gettimeofday(&start, nullptr);
 	}
 
-	~RAII()
+	~Microprofiler()
 	{
-		std::cout << "~RAII: " << id << "\n";
+		timeval end; 
+		gettimeofday(&end, nullptr);
+
+		size_t passed = 1000 * 1000 * (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec);
+		std::cout << name << ": " << passed << "\n";
 	}
+private:
+	const char * name;
+	timeval start;
 };
 
-void printText(const char * text, const Engine::ParsedText& parsed)
-{
-	for (size_t i = 0; i < parsed.length; ++i)
-	{
-		const Engine::PartialText& part = parsed.parts[i];
-		std::cout << "[" << i << "] (" << part.start << ", " << part.length << ") " << std::string(text + part.start, part.length) << "\n";
-		std::cout << "\tID: " << part.commandID << "(" << part.argument << ")\n";
-	}
-}
+
 
 int main(int argc, char * argv[])
 {
-	using namespace Engine::Memory;
-	using namespace Engine;
+	size_t n = 1000 * 10;
+	{
+		Microprofiler p = Microprofiler("Dongs");
 
-	//16KB
-	StackAllocator alloc(16 * 1024 * 1024);
-	StackScope scope(&alloc);
+		
+		for (size_t i = 0; i < n; ++i)
+		{
+			std::stringstream s;
+			for (size_t j = 0; j < 5; ++j)
+			{
+				s << i << "hello, world" << i << i << i << i << i << i << "\n";
+			}
+			s.str().c_str();
+			s.str("");
+		}
+	}
 
-	const char * text = "This is a test[[setx: 32451.0243]] of something. [[setx: 0x0000FFFF]]There should only be one.";
-	ParsedText parsed = parseCommandText(scope, text, text + strlen(text));
+	{
+		Microprofiler p = Microprofiler("Dongs");
+		Engine::Memory::StackAllocator alloc(1024 * 8 * 8);
+		
+		for (size_t i = 0; i < n; ++i)
+		{
+			Engine::Memory::StackScope scope(&alloc);	
+			Engine::Memory::Stream s(scope);
+			for (size_t j = 0; j < 5; ++j)
+			{
+				s << i << "hello, world" << i << i << i << i << i << i << "\n";
+			}
 
-	printText(text, parsed);
-	
-	std::cout.precision(10);
-	std::cout << 12351.325 << "\n";
-	std::cout << atof("23414.0145") << "\n";
-
-	return 0;
+			s.c_str();
+		}
+	}
 }

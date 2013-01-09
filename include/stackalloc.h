@@ -25,6 +25,19 @@ namespace Engine
 			~StackAllocator();
 
 			template<typename T>
+			size_t computeActualAllocationSize(size_t n) const
+			{
+				if ((sizeof(T) * n) % 16 != 0)
+				{	
+					return (((sizeof(T) * n) / 16) + 1) * 16;
+				}
+				else
+				{
+					return sizeof(T) * n;
+				}
+			}
+
+			template<typename T>
 			T * allocate(size_t count)
 			{
 				//Make sure we have enough space to allocate.
@@ -34,20 +47,25 @@ namespace Engine
 				T * result = reinterpret_cast<T *>(current);
 				
 				//The current pointer is always resting at a multiple of 16 bytes.
-				if ((sizeof(T) * count) % 16 != 0)
-				{	
-					current += (((sizeof(T) * count) / 16) + 1) * 16;
-				}
-				else
-				{
-					current += sizeof(T) * count;
-				}
-
+				current += computeActualAllocationSize<T>(count);
 				return result;
+			}
+
+			template<typename T>
+			bool wasMostRecentAllocation(const T * b, size_t size) const
+			{
+				//Expected next pointer: 
+				const boost::uint8_t * base = reinterpret_cast<const boost::uint8_t *>(b);
+				base += computeActualAllocationSize<T>(size);
+				return base == current;
 			}
 
 			Mark mark();
 			void release(Mark b);
+
+			size_t remaining() const;
+			const boost::uint8_t * currentAllocation() const;
+			void reset(boost::uint8_t * point);
 		private:
 			boost::uint8_t * base;
 			boost::uint8_t * current; 
@@ -101,6 +119,8 @@ namespace Engine
 			explicit StackScope(StackAllocator * base);
 			~StackScope();
 
+			void close();
+
 //A few local defines to help out
 #define ENABLE_POD(T) typename boost::enable_if<boost::is_pod<T>, T *>::type
 #define DISABLE_POD(T) typename boost::disable_if<boost::is_pod<T>, T *>::type
@@ -143,6 +163,22 @@ namespace Engine
 			{
 				T * result = base->allocate<T>(size);
 				return result;
+			}
+
+			template<typename T>
+			bool unsafeResizeArray(T * pointer, size_t oldsize, size_t newsize)
+			{
+				assert(newsize > oldsize);
+				if (base->remaining() > (newsize - oldsize) * sizeof(T))
+				{
+					if (base->wasMostRecentAllocation(pointer, oldsize))
+					{
+						base->reset(reinterpret_cast<boost::uint8_t *>(pointer) + base->computeActualAllocationSize<T>(newsize));
+						return true;
+					}
+				}
+
+				return false;
 			}
 
 #define NPOD_CREATE(n) template<typename T BOOST_PP_COMMA_IF(n) BOOST_PP_ENUM_PARAMS(n, typename A)> \

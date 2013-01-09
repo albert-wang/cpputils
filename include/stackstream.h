@@ -17,7 +17,7 @@ namespace Engine
 		template<typename Ch>
 		class MemorySink : public boost::iostreams::device<Detail::MemoryCategory, Ch>
 		{
-			static const size_t BUFFER_SIZE = 32;
+			static const size_t BUFFER_SIZE = 64;
 			struct Node
 			{
 				Ch * buffer;
@@ -35,13 +35,21 @@ namespace Engine
 
 			std::streamsize write(const Ch * s, std::streamsize n)
 			{
-				if (compiled) 
+				if (compiled)
 				{
 					return 0;
 				}
 
+				if (last && scope->unsafeResizeArray(last->buffer, last->length, (last->length + n + 1)))
+				{
+					memcpy(last->buffer + last->length, s, sizeof(Ch) * n); 
+					last->length = last->length + n;
+					length += n;
+					return n;
+				}
+
 				Node * node = scope->createPOD<Node>();
-				node->buffer = scope->createArray<Ch>(n);
+				node->buffer = scope->createArray<Ch>(n + 1);
 				node->length = n;
 				node->next = NULL;
 
@@ -81,9 +89,25 @@ namespace Engine
 			{
 				return length;
 			}
+
+			void reset() 
+			{
+				scope->close();
+				base = nullptr;
+				last = nullptr;
+				compiled = nullptr;
+				length = 0;
+			}
 		private:
 			void finish()
 			{
+				if (base == last)
+				{
+					base->buffer[base->length] = '\0';
+					compiled = base->buffer;
+					return;
+				}
+				
 				compiled = scope->createArray<Ch>(length + 1);
 
 				Node * current = base;
@@ -130,28 +154,37 @@ namespace Engine
 				self->flush();
 				return (*self)->data();
 			}
+
+			void reset()
+			{
+				Stream * self = static_cast<Stream *>(this);
+				(*self)->reset();
+			}
 		};
 	};
 
-	class MemoryStream 
-		: public boost::iostreams::stream<Detail::MemorySink<char>>
-		, public Detail::StreamOperations<char, MemoryStream>
+	namespace Memory
 	{
-	public:
-		explicit MemoryStream(Memory::StackScope& scope)
+		class Stream 
+			: public boost::iostreams::stream<Detail::MemorySink<char>>
+			, public Detail::StreamOperations<char, Stream>
 		{
-			this->open(Detail::MemorySink<char>(scope));
-		}
-	};
+		public:
+			explicit Stream(Memory::StackScope& scope)
+			{
+				this->open(Detail::MemorySink<char>(scope));
+			}
+		};
 
-	class WideMemoryStream 
-		: public boost::iostreams::stream<Detail::MemorySink<wchar_t>>
-		, public Detail::StreamOperations<wchar_t, WideMemoryStream>
-	{
-	public:
-		explicit WideMemoryStream(Memory::StackScope& scope)
+		class WideStream 
+			: public boost::iostreams::stream<Detail::MemorySink<wchar_t>>
+			, public Detail::StreamOperations<wchar_t, WideStream>
 		{
-			this->open(Detail::MemorySink<wchar_t>(scope));
-		}
-	};
+		public:
+			explicit WideStream(Memory::StackScope& scope)
+			{
+				this->open(Detail::MemorySink<wchar_t>(scope));
+			}
+		};
+	}
 }

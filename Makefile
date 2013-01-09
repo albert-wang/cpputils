@@ -2,7 +2,7 @@
 
 CC := ccache clang++
 LD := clang++
-CFLAGS = -I./include -I/opt/local/include -Wall -std=c++0x -fcolor-diagnostics -g
+CFLAGS = -I./include -I/opt/local/include -Wall -std=c++0x -fcolor-diagnostics -g -O3
 OUTPUT = alloc
 
 SRC_FILES := $(wildcard src/*.cpp)
@@ -19,3 +19,8 @@ main : $(OBJ_FILES)
 
 clean : 
 	rm $(OUTPUT); rm obj/*
+
+test :
+	make clean 
+	make
+	./alloc

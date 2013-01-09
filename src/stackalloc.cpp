@@ -27,8 +27,22 @@ namespace Engine
 
 		void StackAllocator::release(StackAllocator::Mark b)
 		{
-			std::cout << "Released " << current - reinterpret_cast<boost::uint8_t *>(b) << " bytes\n";
 			current = reinterpret_cast<boost::uint8_t *>(b);
+		}
+
+		const boost::uint8_t * StackAllocator::currentAllocation() const
+		{
+			return current;
+		}
+
+		void StackAllocator::reset(boost::uint8_t * point)
+		{
+			current = point;
+		}
+
+		size_t StackAllocator::remaining() const
+		{
+			return avaliableSpace - (current - base);
 		}
 	}
 
@@ -45,6 +59,11 @@ namespace Engine
 
 		StackScope::~StackScope()
 		{
+			close();
+		}
+
+		void StackScope::close()
+		{
 			FinalizerEntry * fin = finalizer;
 			while (fin)
 			{
@@ -53,6 +72,7 @@ namespace Engine
 			}
 
 			base->release(mark);
+			mark = base->mark();
 		}
 	}
 }
