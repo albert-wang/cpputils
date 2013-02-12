@@ -38,6 +38,15 @@ void invoke(size_t i)
 	s.flush();
 }
 
+
+void invoke(Engine::Memory::StackAllocator& alloc, size_t i)
+{
+	Engine::Memory::StackScope scope(&alloc);
+	Engine::Memory::Stream s(scope);
+	s << i << " " << i << " " << i << " " << i << " " << i << " " << i << " " << i;
+	s.flush();
+}
+
 int main(int argc, char * argv[])
 {
 	size_t iterations = 1000 * 100;
@@ -50,8 +59,7 @@ int main(int argc, char * argv[])
 		Microprofiler profiler("format");
 		for (size_t i = 0; i < iterations; ++i)
 		{
-			Engine::Memory::StackScope scope(&alloc);
-			Engine::format(scope, "{3} {2} {3} {3} {2} {1} {0}", i, i + 1, i + 2, i + 3);
+			invoke(alloc, i);
 		}
 	}
 
