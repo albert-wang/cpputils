@@ -31,12 +31,18 @@ namespace Engine
 		}
 
 		template<typename C>
+		bool isDigit(C c)
+		{
+			return c >= static_cast<C>('0') && c <= static_cast<C>('9');
+		}
+
+		template<typename C>
 		size_t limitedAtoi(const C * buffer)
 		{
 			return value(buffer[1]) * 10 + value(buffer[0]);
 		}
 
-		size_t countSeenCommands(const size_t * buffer)
+		size_t countSeenCommands(const bool * buffer)
 		{
 			size_t count = 0;
 			for (size_t i = 0; i < MAXIMUM_FORMAT_ARGUMENTS; ++i)

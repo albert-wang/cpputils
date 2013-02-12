@@ -1,8 +1,6 @@
-
-
 CC := ccache clang++
 LD := clang++
-CFLAGS = -I./include -I/opt/local/include -Wall -std=c++0x -fcolor-diagnostics -g -O3
+CFLAGS = -I./include -I/opt/local/include -Wall -std=c++0x -fcolor-diagnostics -g -O3 -Wno-unknown-pragmas
 OUTPUT = alloc
 
 SRC_FILES := $(wildcard src/*.cpp)

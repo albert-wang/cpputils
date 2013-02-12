@@ -2,6 +2,8 @@
 #include <boost/format.hpp>
 #include <string>
 #include <sys/time.h>
+#include <sstream>
+#include <stdio.h>
 
 #include "stackalloc.h"
 #include "stackstream.h"
@@ -29,14 +31,44 @@ private:
 	timeval start;
 };
 
+void invoke(size_t i)
+{
+	std::stringstream s;
+	s << i << " " << i << " " << i << " " << i << " " << i << " " << i << " " << i;
+	s.flush();
+}
+
 int main(int argc, char * argv[])
 {
 	size_t iterations = 1000 * 100;
 	Engine::Memory::StackAllocator alloc(1024 * 8 * 8);
+
 	Engine::Memory::StackScope scope(&alloc);
+	Engine::Memory::Stream s(scope);
 
-	size_t start = alloc.remaining();
-	std::wcout << Engine::format(scope, L"This is replaced {{{0}}} and this is the literal {{0}}", "Hello, World!") << "\n";
+	{
+		Microprofiler profiler("format");
+		for (size_t i = 0; i < iterations; ++i)
+		{
+			Engine::Memory::StackScope scope(&alloc);
+			Engine::format(scope, "{3} {2} {3} {3} {2} {1} {0}", i, i + 1, i + 2, i + 3);
+		}
+	}
 
-	std::wcout << Engine::format(scope, L"{0} {0} {0}, {1}\n", "Hello", 42.12f);
+	{
+		Microprofiler profiler("sprintf");
+		for (size_t i = 0; i < iterations; ++i)
+		{
+			char buffer[1024]; 
+			sprintf(buffer, "%ld %ld %ld %ld %ld %ld %ld", i, i, i, i, i, i, i);
+		}
+	}
+
+	{
+		Microprofiler profiler("sstream");
+		for (size_t i = 0; i < iterations; ++i)
+		{
+			invoke(i);
+		}
+	}
 }

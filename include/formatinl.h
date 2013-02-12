@@ -30,9 +30,7 @@ template<typename Ch BOOST_PP_COMMA_IF(N) BOOST_PP_ENUM(N, GENERATE_TYPENAME, ~)
 const Ch * format(Memory::StackScope& scope, const Ch * format BOOST_PP_COMMA_IF(N) BOOST_PP_ENUM(N, GENERATE_ARGS, ~))
 {
    using namespace Detail;
-   std::locale locale;
-
-   size_t length = stringlength(format);
+   //std::locale locale;
 
    Ch startDelimiter = static_cast<Ch>('{');
    Ch endDelimiter = static_cast<Ch>('}');
@@ -42,21 +40,20 @@ const Ch * format(Memory::StackScope& scope, const Ch * format BOOST_PP_COMMA_IF
    const Ch * commandBegin = format;
 
    const Ch * begin = format; 
-   const Ch * end = format + length;
 
    bool insideCommand = false;
    size_t currentIndexBuffer = 0;
    Ch indexBuffer[2];
 
-   size_t commandsSeen[N];
-   for (size_t i = 0; i < N; ++i)
+   bool commandsSeen[MAXIMUM_FORMAT_ARGUMENTS];
+   for (size_t i = 0; i < MAXIMUM_FORMAT_ARGUMENTS; ++i)
    {
-      commandsSeen[i] = 0;
+      commandsSeen[i] = false;
    }
    
    Engine::Memory::BasicStream<Ch> out(scope);
 
-   while (begin != end)
+   while (*begin)
    {
       if (insideCommand)
       {
@@ -72,20 +69,17 @@ const Ch * format(Memory::StackScope& scope, const Ch * format BOOST_PP_COMMA_IF
                targetIndex = limitedAtoi(indexBuffer);
             }
 
-            assert(targetIndex < N);
-
             begin++;
             insideCommand = false;
 
             out.write(partialStart, commandBegin - partialStart);
-            select(out, targetIndex BOOST_PP_COMMA_IF(N) BOOST_PP_ENUM(N, GENERATE_SELECT_ARGS, ~));\
-
+            select(out, targetIndex BOOST_PP_COMMA_IF(N) BOOST_PP_ENUM(N, GENERATE_SELECT_ARGS, ~));
             commandsSeen[targetIndex] = true;
 
             partialStart = begin;
             continue;
          }
-         else if (std::isdigit(*begin, locale))
+         else if (isDigit(*begin))
          {
             if (currentIndexBuffer == 2)
             {
@@ -132,15 +126,15 @@ const Ch * format(Memory::StackScope& scope, const Ch * format BOOST_PP_COMMA_IF
       }
    }
    
-   if (partialStart != end)
+   if (partialStart != begin)
    {
-      out.write(partialStart, end - partialStart);
+      out.write(partialStart, begin - partialStart);
    }
 
 #ifdef _DEBUG
    //Make sure that every parameter was used.
 #endif
-
+   
    return out.c_str();
 };
 #endif 

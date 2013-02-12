@@ -101,6 +101,11 @@ namespace Engine
 		private:
 			void finish()
 			{
+				if (base == nullptr)
+				{
+					write("", 1);
+				}
+
 				if (base == last)
 				{
 					base->buffer[base->length] = '\0';
@@ -138,27 +143,27 @@ namespace Engine
 			{
 				Stream * self = static_cast<Stream *>(this);
 				self->flush();
-				return (*self)->data();
+				return self->getSink()->data();
 			}
 
 			size_t size() 
 			{
 				Stream * self = static_cast<Stream *>(this);
 				self->flush();
-				return (*self)->size();
+				return self->getSink()->size();
 			}
 
 			const Ch * c_str() 
 			{
 				Stream * self = static_cast<Stream *>(this);
 				self->flush();
-				return (*self)->data();
+				return self->getSink()->data();
 			}
 
 			void reset()
 			{
 				Stream * self = static_cast<Stream *>(this);
-				(*self)->reset();
+				self->getSink()->reset();
 			}
 		};
 	};
@@ -166,15 +171,66 @@ namespace Engine
 	namespace Memory
 	{
 		template<typename C>
+		class BasicStreamBuffer 
+			: public std::basic_streambuf<C>
+		{
+			typedef typename std::basic_streambuf<C>::int_type int_type;
+			typedef typename std::char_traits<C> traits;
+		public:
+			BasicStreamBuffer(Memory::StackScope& scope)
+				:sink(scope)
+			{
+				buffer = scope.createArrayPOD<C>(64);
+				this->setp(buffer, buffer + 64);
+			}
+
+			int_type overflow(int_type ch)
+			{
+				if (ch != traits::eof())
+				{
+					sync();
+					*this->pptr() = ch;
+					this->pbump(1);
+				}
+
+				return ch;
+			}
+
+			int sync() 
+			{
+				int count = this->pptr() - this->pbase();
+				this->pbump(-count);
+				sink.write(this->pbase(), count);
+
+				return 0;
+			}
+
+			Detail::MemorySink<C> * getSink()
+			{
+				return &sink;
+			}
+		private:
+			Detail::MemorySink<C> sink;
+			C * buffer; 
+		};
+
+		template<typename C>
 		class BasicStream 
-			: public boost::iostreams::stream<Detail::MemorySink<C>>
+			: public std::basic_ostream<C>
 			, public Detail::StreamOperations<C, BasicStream<C>>
 		{
 		public:
 			explicit BasicStream(Memory::StackScope& scope)
+				:std::basic_ostream<C>(&buffer)
+				,buffer(scope)
+			{}
+
+			Detail::MemorySink<C> * getSink()
 			{
-				this->open(Detail::MemorySink<C>(scope));
+				return buffer.getSink();
 			}
+		private:
+			BasicStreamBuffer<C> buffer; 
 		};
 
 		typedef BasicStream<char> Stream;
