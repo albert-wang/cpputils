@@ -165,26 +165,19 @@ namespace Engine
 
 	namespace Memory
 	{
-		class Stream 
-			: public boost::iostreams::stream<Detail::MemorySink<char>>
-			, public Detail::StreamOperations<char, Stream>
+		template<typename C>
+		class BasicStream 
+			: public boost::iostreams::stream<Detail::MemorySink<C>>
+			, public Detail::StreamOperations<C, BasicStream<C>>
 		{
 		public:
-			explicit Stream(Memory::StackScope& scope)
+			explicit BasicStream(Memory::StackScope& scope)
 			{
-				this->open(Detail::MemorySink<char>(scope));
+				this->open(Detail::MemorySink<C>(scope));
 			}
 		};
 
-		class WideStream 
-			: public boost::iostreams::stream<Detail::MemorySink<wchar_t>>
-			, public Detail::StreamOperations<wchar_t, WideStream>
-		{
-		public:
-			explicit WideStream(Memory::StackScope& scope)
-			{
-				this->open(Detail::MemorySink<wchar_t>(scope));
-			}
-		};
+		typedef BasicStream<char> Stream;
+		typedef BasicStream<wchar_t> WideStream;
 	}
 }

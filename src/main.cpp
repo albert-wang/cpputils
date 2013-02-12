@@ -22,48 +22,21 @@ public:
 		gettimeofday(&end, nullptr);
 
 		size_t passed = 1000 * 1000 * (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec);
-		std::cout << name << ": " << passed << "\n";
+		std::cout << name << ": " << passed / 1000 << "ms\n";
 	}
 private:
 	const char * name;
 	timeval start;
 };
 
-
-
 int main(int argc, char * argv[])
 {
-	size_t n = 1000 * 10;
-	{
-		Microprofiler p = Microprofiler("Dongs");
+	size_t iterations = 1000 * 100;
+	Engine::Memory::StackAllocator alloc(1024 * 8 * 8);
+	Engine::Memory::StackScope scope(&alloc);
 
-		
-		for (size_t i = 0; i < n; ++i)
-		{
-			std::stringstream s;
-			for (size_t j = 0; j < 5; ++j)
-			{
-				s << i << "hello, world" << i << i << i << i << i << i << "\n";
-			}
-			s.str().c_str();
-			s.str("");
-		}
-	}
+	size_t start = alloc.remaining();
+	std::wcout << Engine::format(scope, L"This is replaced {{{0}}} and this is the literal {{0}}", "Hello, World!") << "\n";
 
-	{
-		Microprofiler p = Microprofiler("Dongs");
-		Engine::Memory::StackAllocator alloc(1024 * 8 * 8);
-		
-		for (size_t i = 0; i < n; ++i)
-		{
-			Engine::Memory::StackScope scope(&alloc);	
-			Engine::Memory::Stream s(scope);
-			for (size_t j = 0; j < 5; ++j)
-			{
-				s << i << "hello, world" << i << i << i << i << i << i << "\n";
-			}
-
-			s.c_str();
-		}
-	}
+	std::wcout << Engine::format(scope, L"{0} {0} {0}, {1}\n", "Hello", 42.12f);
 }
