@@ -21,7 +21,7 @@ public:
 	~Microprofiler()
 	{
 		timeval end; 
-		gettimeofday(&end, nullptr);
+		gettimeofday(&end, nullptr); 
 
 		size_t passed = 1000 * 1000 * (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec);
 		std::cout << name << ": " << passed / 1000 << "ms\n";
