@@ -1,7 +1,7 @@
 #include <boost/function.hpp>
 #include <boost/signals2.hpp>
 #include <boost/smart_ptr.hpp>
-#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 
 namespace Engine
 {
@@ -66,6 +66,7 @@ namespace Engine
 
 		void stop();
 		void terminate();
+		bool valid() const;
 	private:
 		boost::weak_ptr<Detail::InterpolatorBase> target;
 	};
@@ -84,9 +85,9 @@ namespace Engine
 		void update(float time);
 	private:
 		boost::mutex pendingMutex;
-		std::vector<boost::shared_ptr<Detail::InterpolatorBase>> pending;
+		std::vector<boost::shared_ptr<Detail::InterpolatorBase> > pending;
 
 		boost::mutex updateMutex;
-		std::vector<boost::shared_ptr<Detail::InterpolatorBase>> interpolators;
+		std::vector<boost::shared_ptr<Detail::InterpolatorBase> > interpolators;
 	};
 }

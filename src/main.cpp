@@ -8,6 +8,12 @@
 #include "stackalloc.h"
 #include "stackstream.h"
 #include "tinyformat.h"
+#include "interpolator.h"
+
+#include "matrix.h"
+#include "vector.h"
+
+#include "channel.h"
 
 class Microprofiler
 {
@@ -15,13 +21,13 @@ public:
 	Microprofiler(const char * name)
 		:name(name)
 	{
-		gettimeofday(&start, nullptr);
+		gettimeofday(&start, NULL);
 	}
 
 	~Microprofiler()
 	{
 		timeval end; 
-		gettimeofday(&end, nullptr); 
+		gettimeofday(&end, NULL); 
 
 		size_t passed = 1000 * 1000 * (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec);
 		std::cout << name << ": " << passed / 1000 << "ms\n";
@@ -49,34 +55,16 @@ void invoke(Engine::Memory::StackAllocator& alloc, size_t i)
 
 int main(int argc, char * argv[])
 {
-	size_t iterations = 1000 * 100;
-	Engine::Memory::StackAllocator alloc(1024 * 8 * 8);
+	using namespace Engine::Threading;
+	Bidirectional b;
 
-	Engine::Memory::StackScope scope(&alloc);
-	Engine::Memory::Stream s(scope);
+	b.subscribe(&b);
+	b.send(1, 2, 3);
 
+	while (Message msg = b.pop())
 	{
-		Microprofiler profiler("format");
-		for (size_t i = 0; i < iterations; ++i)
-		{
-			invoke(alloc, i);
-		}
+		std::cout << msg.type << "\n";
 	}
 
-	{
-		Microprofiler profiler("sprintf");
-		for (size_t i = 0; i < iterations; ++i)
-		{
-			char buffer[1024]; 
-			sprintf(buffer, "%ld %ld %ld %ld %ld %ld %ld", i, i, i, i, i, i, i);
-		}
-	}
-
-	{
-		Microprofiler profiler("sstream");
-		for (size_t i = 0; i < iterations; ++i)
-		{
-			invoke(i);
-		}
-	}
+	return 0;
 }

@@ -1,4 +1,5 @@
 #include "interpolator.h"
+#include <cassert>
 
 namespace Engine
 {
@@ -6,6 +7,7 @@ namespace Engine
 	{
 		void InterpolatorBase::update(float dt) 
 		{
+			assert(interpolate);
 			if (current == -1.0f)
 			{
 				//This is an error.
@@ -14,13 +16,24 @@ namespace Engine
 
 			if (current >= maximum) 
 			{
-				tick(interpolate(current));
+				float result = interpolate(maximum);
+				if (tick) 
+				{
+					tick(result);
+				}
+
 				finish();
+
 				current = -1.0f;
 				return;
 			}
 
-			tick(interpolate(current));
+			float result = interpolate(current);
+			if (tick)
+			{
+				tick(result);
+			}
+
 			current += speed * dt;
 		}
 	}
@@ -76,6 +89,11 @@ namespace Engine
 		}
 	}
 
+	bool InterpolatorHandle::valid() const
+	{
+		return !!target.lock();
+	}
+
 	InterpolatorHandle InterpolatorCollection::lerp(float low, float high) 
 	{
 		Lerp lerp;
@@ -83,6 +101,7 @@ namespace Engine
 		lerp.high = high;
 
 		boost::shared_ptr<Detail::InterpolatorBase> target = boost::make_shared<Detail::InterpolatorBase>();
+		target->interpolate = lerp;
 		target->current = 0.0f;
 		target->maximum = 1.0f;
 		target->speed = 1.0f;

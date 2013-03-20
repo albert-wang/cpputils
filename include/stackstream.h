@@ -93,15 +93,15 @@ namespace Engine
 			void reset() 
 			{
 				scope->close();
-				base = nullptr;
-				last = nullptr;
-				compiled = nullptr;
+				base = NULL;
+				last = NULL;
+				compiled = NULL;
 				length = 0;
 			}
 		private:
 			void finish()
 			{
-				if (base == nullptr)
+				if (base == NULL)
 				{
 					write("", 1);
 				}
@@ -217,7 +217,7 @@ namespace Engine
 		template<typename C>
 		class BasicStream 
 			: public std::basic_ostream<C>
-			, public Detail::StreamOperations<C, BasicStream<C>>
+			, public Detail::StreamOperations<C, BasicStream<C> >
 		{
 		public:
 			explicit BasicStream(Memory::StackScope& scope)
