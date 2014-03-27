@@ -19,8 +19,7 @@
 int main(int argc, char * argv[])
 {
 	Engine::Memory::StackAllocator alloc(1024 * 10);
-
-	Engine::Memory::StackScope scope(&alloc, 1024);
+	Engine::Memory::StackScope scope(&alloc);
 
 	std::cout << Engine::format(scope, "Hello, {0} {0} {1} {0}\n", "Hi", 42);
 	return 0;
