@@ -4,7 +4,9 @@
 #include <boost/utility.hpp>
 #include <boost/type_traits.hpp>
 #include <boost/preprocessor.hpp>
+#include <boost/thread/mutex.hpp>
 
+#include <iostream>
 #include <cassert>
 #include <utility>
 
@@ -16,6 +18,16 @@ namespace Engine
 		//This creates 16-byte aligned allocations.
 		class StackAllocator : boost::noncopyable
 		{
+			struct MarkEntry
+			{
+				boost::uint32_t prev;
+				boost::uint32_t next;
+
+				boost::uint32_t release;
+				boost::uint32_t flags;
+			};
+
+			BOOST_STATIC_ASSERT(sizeof(MarkEntry) == 16);
 		public:
 			struct Incomplete;
 			typedef Incomplete * Mark;
@@ -28,7 +40,7 @@ namespace Engine
 			size_t computeActualAllocationSize(size_t n) const
 			{
 				if ((sizeof(T) * n) % 16 != 0)
-				{	
+				{
 					return (((sizeof(T) * n) / 16) + 1) * 16;
 				}
 				else
@@ -40,24 +52,25 @@ namespace Engine
 			template<typename T>
 			T * allocate(size_t count)
 			{
+				size_t bytes = computeActualAllocationSize<T>(count);
+
 				//Make sure we have enough space to allocate.
-				assert(sizeof(T) * count + (current - base) < avaliableSpace);
+				assert(bytes + consumed < avaliableSpace);
 				assert(count > 0);
 
-				T * result = reinterpret_cast<T *>(current);
-				
 				//The current pointer is always resting at a multiple of 16 bytes.
-				current += computeActualAllocationSize<T>(count);
-				return result;
+				boost::uint32_t target = consumed.fetch_add(bytes);
+
+				return reinterpret_cast<T *>(base + target);
 			}
 
 			template<typename T>
 			bool wasMostRecentAllocation(const T * b, size_t size) const
 			{
-				//Expected next pointer: 
+				//Expected next pointer:
 				const boost::uint8_t * base = reinterpret_cast<const boost::uint8_t *>(b);
 				base += computeActualAllocationSize<T>(size);
-				return base == current;
+				return base == currentAllocation();
 			}
 
 			Mark mark();
@@ -68,9 +81,11 @@ namespace Engine
 			void reset(boost::uint8_t * point);
 		private:
 			boost::uint8_t * base;
-			boost::uint8_t * current; 
-
+			std::atomic<boost::uint32_t> consumed;
 			size_t avaliableSpace;
+
+			MarkEntry * mostRecentMark;
+			boost::mutex mutex;
 		};
 
 		//This is an overlay on the stack allocator, which provides things like destructors.
@@ -138,7 +153,7 @@ namespace Engine
 			}
 
 			template<typename T>
-			T * createPOD() 
+			T * createPOD()
 			{
 				T * result = base->allocate<T>(1);
 				return result;

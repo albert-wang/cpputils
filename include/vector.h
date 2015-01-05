@@ -1,21 +1,7 @@
-#ifndef VECTOR_HPP_INCLUDED
-#define VECTOR_HPP_INCLUDED
-
-#include <boost/static_assert.hpp>
-#include <boost/utility.hpp>
-#include <boost/type_traits.hpp>
-#include <boost/mpl/or.hpp>
+#include <boost/preprocessor.hpp>
 #include <cassert>
-
+#include <cmath>
 #include <iostream>
-
-#if !defined(_WIN32) && !defined(__declspec)
-//Alright, declspecs should be handled on a per-compiler basis
-//But i'm lazy.
-#define __declspec(X) 
-
-
-#endif
 
 #pragma once
 #pragma warning(push)
@@ -25,688 +11,441 @@ class Matrix2;
 class Matrix3;
 class Matrix4;
 
-//Utility Macros
-#define VECTOR_COMPARE_IMPL(other, op) \
-	bool result = true;												\
-	result = result && (elements[0] op other[0]);					\
-	result = result && (elements[1] op other[1]);					\
-	if (len >= 3) result = result && (elements[2] op other[2]);		\
-	if (len == 4) result = result && (elements[3] op other[3]);		\
-	return result
+bool fequals(float, float);
 
-#define VECTOR_MATH_IMPL(other, op) \
-	elements[0] op other[0];										\
-	elements[1] op other[1];										\
-	if (adjustedLen == 3) elements[2] op other[2];					\
-	return *this
+#define VECTOR_MATH_VEC_ELEM(r, op, elem) \
+	elem op other. elem;
 
-#define VECTOR_MATH_SCALAR_IMPL(other, op) \
-	elements[0] op other;										\
-	elements[1] op other;										\
-	if (adjustedLen == 3) elements[2] op other;					\
-	return *this
+#define VECTOR_MATH_SCALAR_ELEM(r, op, elem) \
+	elem op other;
+
+#define VECTOR_COMPARE_ELEM(r, op, elem) \
+	result = result && (elem op other. elem);
+
+#define INVOKE(macro, n, tuple, data) \
+	BOOST_PP_SEQ_FOR_EACH(macro, data, BOOST_PP_TUPLE_TO_SEQ(n, tuple))
+
+#define INVOKE2(macro, data) \
+	INVOKE(macro, 2, (x, y), data)
+
+#define INVOKE3(macro, data) \
+	INVOKE(macro, 3, (x, y, z), data)
+
+#define INVOKE4(macro, data) \
+	INVOKE(macro, 3, (x, y, z), data)
+
+#define MATH_OP(n, op) \
+			BOOST_PP_CAT(GVector, n)& operator op(const BOOST_PP_CAT(GVector, n)& other) { BOOST_PP_CAT(INVOKE, n)(VECTOR_MATH_VEC_ELEM, op); return *this; } \
+			BOOST_PP_CAT(GVector, n)& operator op(T other) { BOOST_PP_CAT(INVOKE, n)(VECTOR_MATH_SCALAR_ELEM, op); return *this; }
+
+#define LOGIC_OP(n, op) \
+			bool operator op(const BOOST_PP_CAT(GVector, n)& other) { bool result = true; BOOST_PP_CAT(INVOKE, n)(VECTOR_COMPARE_ELEM, op); return result; }
+
+#define INDEX(n) \
+			T& operator[](unsigned int i) { assert(i < n); return this->*ComponentPointers[i]; } \
+			const T& operator[](unsigned int i) const { assert(i < n); return this->*ComponentPointers[i]; }
 
 namespace Math
 {
-	/*
-		Vector4 acts exactly like a Vector3 for the following purposes:
-			constructor
-			math operations
-
-		And like a 4-element tuple for the following operations:
-			constructor
-			iterators
-			indexing
-			logical operations (==, !=)
-	*/
-
-	namespace Detail
+	template<typename T>
+	class GVector2
 	{
-		template<typename U, size_t len>
-		typename boost::enable_if<boost::is_pod<U> >::type copy( const U * begin, const U *, U * dest )
-		{
-			dest[0] = begin[0];
-			dest[1] = begin[1];
-			if (len >= 3)
-			{
-				dest[2] = begin[2];
-			}
-
-			if (len == 4)
-			{
-				dest[3] = begin[3];
-			}
-		}
-	}
-
-	template<typename T, size_t len>
-	class Vector
-	{
-		BOOST_STATIC_ASSERT( boost::is_pod<T>::value );
-		BOOST_STATIC_ASSERT( len == 2 || len == 3 || len == 4 );
-		static const size_t adjustedLen = 
-			boost::mpl::if_c<
-				len == 4, 
-				boost::mpl::size_t<3>, 
-				boost::mpl::size_t<len> >::type::value;
-
-		
 	public:
-		typedef T value_type;
-		typedef T* iterator;
-		typedef T const * const_iterator;
+		typedef T GVector2<T>::*MemberPointer;
 
-		//The augmentation constructors
-		Vector(const Vector<T, 2>& v, T z)
+		GVector2()
+			:x(T())
+			,y(T())
+		{}
+
+		GVector2(T x, T y)
+			:x(x)
+			,y(y)
+		{}
+
+		MATH_OP(2, +=)
+		MATH_OP(2, -=)
+		MATH_OP(2, *=)
+		MATH_OP(2, /=)
+
+		LOGIC_OP(2, !=)
+		LOGIC_OP(2, ==)
+		LOGIC_OP(2, >)
+		LOGIC_OP(2, >=)
+		LOGIC_OP(2, <)
+		LOGIC_OP(2, <=)
+
+		INDEX(2)
+
+		float magnitude() const
 		{
-			Detail::copy<T, 2>(v.begin(), v.end(), begin());
-			elements[2] = z;
+			T squared = dot(*this, *this);
+			return std::sqrt(static_cast<float>(squared));
 		}
 
-		Vector(T x, const Vector<T, 2>& v)
+		void normalize() const
 		{
-			elements[0] = x;
-			Detail::copy<T, 2>(v.begin(), v.end(), begin() + 1 );
+			float mag = magnitude();
+			x /= mag;
+			y /= mag;
 		}
 
-		Vector(const Vector<T, 2>&v, T z, T w)
+		T * data() const
 		{
-			Detail::copy<T, 2>(v.begin(), v.end(), begin());
-			elements[2] = z;
-			elements[3] = w;
+			return &x;
 		}
 
-		Vector(T x, const Vector<T, 2>& v, T w)
-		{
-			elements[0] = x;
-			Detail::copy<T, 2>( v.begin(), v.end(), begin() + 1 );
-			elements[3] = w;
-		}
-
-		Vector(T x, T y, const Vector<T, 2>& v)
-		{
-			elements[0] = x;
-			elements[1] = y;
-			Detail::copy<T, 2>( v.begin(), v.end(), begin() + 2 );
-		}
-
-		Vector(const Vector<T, 3>& v, T w)
-		{
-			Detail::copy<T, 3>(v.begin(), v.end(), begin() );
-			elements[3] = w;
-		}
-
-		Vector( T x, const Vector<T, 3>& v)
-		{
-			elements[0] = x;
-			Detail::copy<T, 3>( v.begin(), v.end(), begin() + 1 );
-		}
-
-		//Normal constructors.
-		Vector( T x, T y )
-		{
-			elements[0] = x;
-			elements[1] = y;
-		}
-
-		Vector( T x, T y, T z)
-		{
-			elements[0] = x;
-			elements[1] = y;
-			elements[2] = z;
-			if (len == 4)
-			{
-				elements[3] = 1.0f;
-			}
-		}
-
-		Vector( T x, T y, T z, T w)
-		{
-			elements[0] = x;
-			elements[1] = y;
-			elements[2] = z;
-			elements[3] = w;
-		}
-
-		Vector()
-		{
-			for (size_t i = 0; i < len; ++i)
-			{
-				elements[i] = T();
-			}
-			if (len == 4)
-			{
-				elements[3] = T(1);
-			}
-		}
-
-		//Copy constructor
-		Vector(const Vector& other)
-		{
-			Detail::copy<T, len>(other.begin(), other.end(), begin());
-		}
-
-		size_t size() const 
-		{
-			return len;
-		}
-		
-		const T * data() const
-		{
-			return elements;
-		}
-
-		//The View operator.
-		template<typename U>
-		Vector<T, U::ResultLength> operator|( const U& function ) const
-		{
-			return function(*this);
-		}
-
-		T& operator[](size_t index)
-		{
-			assert(index < len);
-			return elements[index];
-		}
-
-		const T& operator[](size_t index) const
-		{
-			assert(index < len);
-			return elements[index];
-		}
-
-#pragma warning(push)
-#pragma warning(disable: 4996) //Checked iterators
-		void swap(Vector& other)
-		{
-			std::swap_ranges(begin(), end(), other.begin());
-		}
-#pragma warning(pop)
-
-		iterator begin() 
-		{
-			return elements;
-		}
-
-		iterator end()
-		{
-			return elements + len;
-		}
-		
-		const_iterator begin() const
-		{
-			return elements;
-		}
-
-		const_iterator end() const
-		{
-			return elements + len;
-		}
-
-		//Relational operators
-		bool operator==(const Vector& other) const
-		{
-			VECTOR_COMPARE_IMPL(other, ==);
-		}
-
-		bool operator<(const Vector& other) const
-		{
-			VECTOR_COMPARE_IMPL(other, <);
-		}
-
-		bool operator<=(const Vector& other) const
-		{
-			VECTOR_COMPARE_IMPL(other, <=);
-		}
-
-		bool operator!=(const Vector& other) const
-		{
-			VECTOR_COMPARE_IMPL(other, !=);
-		}
-
-		bool operator>=(const Vector& other) const
-		{
-			VECTOR_COMPARE_IMPL(other, >=);
-		}
-
-		bool operator>(const Vector& other) const
-		{
-			VECTOR_COMPARE_IMPL(other, >);
-		}
-
-		//Math Operators.
-		Vector& operator+=(const Vector& other)
-		{
-			VECTOR_MATH_IMPL(other, +=);
-		}
-
-		Vector& operator-=(const Vector& other)
-		{
-			VECTOR_MATH_IMPL(other, -=);
-		}
-
-		Vector& operator/=(const Vector& other)
-		{
-			VECTOR_MATH_IMPL(other, /=);
-		}
-
-		Vector& operator*=(const Vector& other)
-		{
-			VECTOR_MATH_IMPL(other, *=);
-		}
-
-		Vector& operator+=(T other)
-		{
-			VECTOR_MATH_SCALAR_IMPL(other, +=);
-		}
-
-		Vector& operator-=(T other)
-		{
-			VECTOR_MATH_SCALAR_IMPL(other, -=);
-		}
-
-		Vector& operator/=(T other)
-		{
-			VECTOR_MATH_SCALAR_IMPL(other, /=);
-		}
-
-		Vector& operator*=(T other)
-		{
-			VECTOR_MATH_SCALAR_IMPL(other, *=);
-		}
-
-		float getMagnitude() const
-		{
-			T sqrMagnitude = dot(*this);
-			return std::sqrt( static_cast<float>(sqrMagnitude) );
-		}
-
-		Vector cross(const Vector& rhv) const
-		{
-			BOOST_STATIC_ASSERT(len != 2);
-
-			Vector result;
-			T x = elements[1] * rhv.elements[2] - elements[2] * rhv.elements[1];
-			T y = elements[2] * rhv.elements[0] - elements[0] * rhv.elements[2];
-			T z = elements[0] * rhv.elements[1] - elements[1] * rhv.elements[0];
-
-			result[0] = x;
-			result[1] = y;
-			result[2] = z;
-
-			return result;
-		}
-
-		Vector perpendicularTo() const
-		{
-			BOOST_STATIC_ASSERT(len != 2);
-
-			Vector result = cross( Vector(0, 0, 1) );
-			if (result.getMagnitude() == 0)
-			{
-				result = cross( Vector(0, 1, 0) );
-			}
-			return result;
-		}
-
-		T dot( const Vector& other ) const
-		{
-			T result = T();
-			result += elements[0] * other[0];
-			result += elements[1] * other[1];
-
-			if (adjustedLen == 3)
-			{
-				result += elements[2] * other[2];
-			}
-			
-			return result;
-		}
-
-		T squareDistanceBetween(const Vector& other) const
-		{
-			Vector distance = (*this) - other;
-			return distance.dot(distance);
-		}
-
-		float distanceBetween(const Vector& other) const
-		{
-			return std::sqrt(static_cast<float>(squareDistanceBetween(other)));
-		}
-
-		void homogeneousDivide()
-		{
-			BOOST_STATIC_ASSERT(len == 4);
-			elements[0] /= elements[3];
-			elements[1] /= elements[3];
-			elements[2] /= elements[3];
-			elements[3] = 1;
-		}
-
-		void normalize()
-		{
-			float mag = getMagnitude();
-			
-			if (mag < 0.000001f || mag == 1.0f)
-			{
-				return;
-			}
-
-			elements[0] /= mag;
-			elements[1] /= mag;
-			if (adjustedLen == 3)
-			{
-				elements[2] /= mag;
-			}
-		}
-
-		Vector unit() const
-		{
-			Vector result(*this);
-			result.normalize();
-			return result;
-		}
+		T x;
+		T y;
 	private:
-		T elements[len];
+		static const MemberPointer ComponentPointers[2];;
 	};
 
-	template<typename T, size_t l>
-	T dot( const Vector<T, l>& a, const Vector<T, l>& b)
+	template<typename T>
+	const typename GVector2<T>::MemberPointer GVector2<T>::ComponentPointers[2] = { &GVector2<T>::x, &GVector2<T>::y };
+
+	template<typename T>
+	class GVector3
 	{
-		return a.dot(b);
+	public:
+		typedef T GVector3<T>::*MemberPointer;
+
+		GVector3()
+			:x(T())
+			,y(T())
+			,z(T())
+		{}
+
+		GVector3(const GVector2<T>& a, T z)
+			:x(a.x)
+			,y(a.y)
+			,z(z)
+		{}
+
+		GVector3(T x, const GVector2<T>& a)
+			:x(x)
+			,y(a.x)
+			,z(a.y)
+		{}
+
+		GVector3(T x, T y, T z)
+			:x(x)
+			,y(y)
+			,z(z)
+		{}
+
+#ifdef USE_BULLET_CONVERSIONS
+		//This is implicit on purpose.
+		GVector3(const btVector3& in)
+			:x(in.getX())
+			,y(in.getY())
+			,z(in.getZ())
+		{}
+
+		operator btVector3() const
+		{
+			assert(adjustedLen == 3);
+			return btVector3(x, y, z);
+		}
+#endif
+
+		MATH_OP(3, +=)
+		MATH_OP(3, -=)
+		MATH_OP(3, *=)
+		MATH_OP(3, /=)
+
+		LOGIC_OP(3, !=)
+		LOGIC_OP(3, ==)
+		LOGIC_OP(3, >)
+		LOGIC_OP(3, >=)
+		LOGIC_OP(3, <)
+		LOGIC_OP(3, <=)
+
+		INDEX(3)
+
+		float magnitude() const
+		{
+			T squared = dot(*this, *this);
+			return std::sqrt(static_cast<float>(squared));
+		}
+
+		void normalize() const
+		{
+			float mag = magnitude();
+			x /= mag;
+			y /= mag;
+			z /= mag;
+		}
+
+		GVector3 perpendicularTo() const
+		{
+			GVector3 res = cross(*this, GVector3<T>(0, 0, 1));
+			if (dot(res, res) == 0)
+			{
+				res = cross(*this, GVector3<T>(0, 1, 0));
+			}
+
+			return res;
+		}
+
+		T * data() const
+		{
+			return &x;
+		}
+
+		T x;
+		T y;
+		T z;
+	private:
+		static const MemberPointer ComponentPointers[3];
+	};
+
+	template<typename T>
+	const typename GVector3<T>::MemberPointer GVector3<T>::ComponentPointers[3] = { &GVector3<T>::x, &GVector3<T>::y, &GVector3<T>::z };
+
+	template<typename T>
+	class GVector4
+	{
+	public:
+		typedef T GVector4<T>::*MemberPointer;
+
+		GVector4()
+			:x(T())
+			,y(T())
+			,z(T())
+			,w(T(1))
+		{}
+
+		GVector4(const GVector3<T>& a, T w)
+			:x(a.x)
+			,y(a.y)
+			,z(a.z)
+			,w(w)
+		{}
+
+		GVector4(T x, const GVector3<T>& a)
+			:x(x)
+			,y(a.x)
+			,z(a.y)
+			,w(a.z)
+		{}
+
+		GVector4(const GVector2<T>& a, T z, T w = T(1))
+			:x(a.x)
+			,y(a.y)
+			,z(z)
+			,w(w)
+		{}
+
+		GVector4(T x, const GVector2<T>& a, T w = T(1))
+			:x(x)
+			,y(a.x)
+			,z(a.y)
+			,w(w)
+		{}
+
+		GVector4(T x, T y, const GVector2<T>& a)
+			:x(x)
+			,y(y)
+			,z(a.x)
+			,w(a.y)
+		{}
+
+		GVector4(T x, T y, T z, T w = T(1))
+			:x(x)
+			,y(y)
+			,z(z)
+			,w(w)
+		{}
+
+
+#ifdef USE_BULLET_CONVERSIONS
+		//This is implicit on purpose.
+		GVector4(const btVector3& in)
+			:x(in.getX())
+			,y(in.getY())
+			,z(in.getZ())
+			,w(T(1))
+		{}
+
+		operator btVector3() const
+		{
+			assert(adjustedLen == 3);
+			return btVector3(x, y, z);
+		}
+#endif
+
+		MATH_OP(4, +=)
+		MATH_OP(4, -=)
+		MATH_OP(4, *=)
+		MATH_OP(4, /=)
+
+		LOGIC_OP(4, !=)
+		LOGIC_OP(4, ==)
+		LOGIC_OP(4, >)
+		LOGIC_OP(4, >=)
+		LOGIC_OP(4, <)
+		LOGIC_OP(4, <=)
+
+		INDEX(4)
+
+		float magnitude() const
+		{
+			T squared = dot(*this, *this);
+			return std::sqrt(static_cast<float>(squared));
+		}
+
+		void normalize() const
+		{
+			float mag = magnitude();
+			x /= mag;
+			y /= mag;
+			z /= mag;
+		}
+
+		GVector4 perpendicularTo() const
+		{
+			GVector4 res = cross(*this, GVector4<T>(0, 0, 1));
+			if (dot(res, res) == 0)
+			{
+				res = cross(*this, GVector4<T>(0, 1, 0));
+			}
+
+			return res;
+		}
+
+		T * data() const
+		{
+			return &x;
+		}
+
+		T x;
+		T y;
+		T z;
+		T w;
+	private:
+		static const MemberPointer ComponentPointers[4];
+	};
+
+	template<typename T>
+	const typename GVector4<T>::MemberPointer GVector4<T>::ComponentPointers[4] = { &GVector4<T>::x, &GVector4<T>::y, &GVector4<T>::z, &GVector4<T>::w };
+
+	template<typename T, unsigned int i>
+	struct VectorTrait
+	{};
+
+	template<typename T>
+	struct VectorTrait<T, 2>
+	{
+		typedef GVector2<T> type;
+	};
+
+	template<typename T>
+	struct VectorTrait<T, 3>
+	{
+		typedef GVector3<T> type;
+	};
+
+	template<typename T>
+	struct VectorTrait<T, 4>
+	{
+		typedef GVector4<T> type;
+	};
+
+	//Free operators
+#define FREE_OPERATOR(op, accop) 					\
+	template<typename T, unsigned int L>			\
+	typename VectorTrait<T, L>::type operator op(const typename VectorTrait<T, L>::type& a, const typename VectorTrait<T, L>::type& b) \
+	{												\
+		typename VectorTrait<T, L>::type result(a);	\
+		result accop b;								\
+		return result;								\
+	}												\
+	template<typename T, unsigned int L>					\
+	typename VectorTrait<T, L>::type operator op(const typename VectorTrait<T, L>::type& a, T b) \
+	{												\
+		typename VectorTrait<T, L>::type result(a);	\
+		result accop b;								\
+		return result;								\
 	}
 
-	template<typename T, size_t l>
-	Vector<T, l> cross( const Vector<T, l>& a, const Vector<T, l>& b)
-	{
-		return a.cross(b);
-	}
+	FREE_OPERATOR(+, +=)
+	FREE_OPERATOR(-, -=)
+	FREE_OPERATOR(*, *=)
+	FREE_OPERATOR(/, /=)
 
-	template<typename T, size_t l>
-	Vector<T, l> unit( const Vector<T, l>& a)
+	//Multiply and Add have T, Vec<T> implementations too.
+	template<typename T, unsigned int L>
+	typename VectorTrait<T, L>::type operator+(T b, const typename VectorTrait<T, L>::type& a)
 	{
-		return a.unit();
-	}
-
-	template<typename T, size_t l>
-	Vector<T, l> project( const Vector<T, l>& a, const Vector<T, l>& b )
-	{
-		return (dot(a, b) / a.getMagnitude()) * a.unit();
-	}
-
-	template<typename T, size_t l>
-	Vector<T, l> operator+(const Vector<T, l>& a, const Vector<T, l>& b)
-	{
-		Vector<T, l> result(a);
+		typename VectorTrait<T, L>::type result(a);
 		result += b;
 		return result;
 	}
 
-	template<typename T, size_t l>
-	Vector<T, l> operator-(const Vector<T, l>& a, const Vector<T, l>& b)
+	template<typename T, unsigned int L>
+	typename VectorTrait<T, L>::type operator*(T b, const typename VectorTrait<T, L>::type& a)
 	{
-		Vector<T, l> result(a);
-		result -= b;
-		return result;
-	}
-
-
-	template<typename T, size_t l>
-	Vector<T, l> operator*(const Vector<T, l>& a, const Vector<T, l>& b)
-	{
-		Vector<T, l> result(a);
+		typename VectorTrait<T, L>::type result(a);
 		result *= b;
 		return result;
 	}
 
-	template<typename T, size_t l>
-	Vector<T, l> operator/(const Vector<T, l>& a, const Vector<T, l>& b)
+	template<typename T, unsigned int L>
+	typename VectorTrait<T, L>::type unit(const typename VectorTrait<T, L>::type& a)
 	{
-		Vector<T, l> result(a);
-		result /= b;
+		typename VectorTrait<T, L>::type result(a);
+		result.normalize();
 		return result;
 	}
 
-	template<typename T, size_t l, typename U>
-	Vector<T, l> operator+(const Vector<T, l>& a, const U& b)
-	{
-		Vector<T, l> result(a);
-		result += static_cast<T>(b);
-		return result;
-	}
-
-	template<typename T, size_t l, typename U>
-	Vector<T, l> operator+(const U& b, const Vector<T, l>& a)
-	{
-		Vector<T, l> result(a);
-		result += static_cast<T>(b);
-		return result;
-	}
-
-	template<typename T, size_t l, typename U>
-	Vector<T, l> operator-(const Vector<T, l>& a, const U& b)
-	{
-		Vector<T, l> result(a);
-		result -= static_cast<T>(b);
-		return result;
-	}
-
-
-	template<typename T, size_t l, typename U>
-	Vector<T, l> operator*(const Vector<T, l>& a, const U& b)
-	{
-		Vector<T, l> result(a);
-		result *= static_cast<T>(b);
-		return result;
-	}
-
-	//Disable this from lookup when U = matrix.
-	template<typename T, size_t l, typename U>
-	typename boost::disable_if<
-		boost::mpl::or_<
-			boost::is_same<U, Matrix4>,
-			boost::is_same<U, Matrix3>, 
-			boost::is_same<U, Matrix2>
-		>, 
-		Vector<T, l>
-	>::type operator*(U b, const Vector<T, l>& a)
-	{
-		Vector<T, l> result(a);
-		result *= static_cast<T>(b);
-		return result;
-	}
-
-	template<typename T, size_t l, typename U>
-	Vector<T, l> operator/(const Vector<T, l>& a, U b)
-	{
-		Vector<T, l> result(a);
-		result /= static_cast<T>(b);
-		return result;
-	}
-
-	//Vector typecasting.
-	template<typename T, typename U, size_t Len>
-	Vector<T, Len> vector_cast( const Vector<U, Len>& in )
-	{
-		Vector<T, Len> result;
-		std::copy( in.begin(), in.end(), result.begin() );
-		return result;
-	}
-
-	template<size_t newLen, typename T, size_t Len>
-	Vector<T, newLen> vector_cast( const Vector<T, Len>& in)
-	{
-		return vector_cast<T, newLen, T, Len>(in);
-	}
-
-#pragma warning(push)
-#pragma warning(disable: 4996)  //Checked iterators
-	template<typename T, size_t newLen, typename U, size_t Len>
-	Vector<T, newLen> vector_cast( const Vector<U, Len>& in )
-	{
-		Vector<T, newLen> result;
-		if (newLen < Len)
-		{
-			std::copy( in.begin(), in.begin() + newLen, result.begin());
-		} else
-		{
-			std::copy( in.begin(), in.end(), result.begin() );
-		}
-		return result;
-	}
-#pragma warning(pop)
-
-	template<size_t x, size_t y, size_t z, size_t w>
-	struct Curry4
-	{
-		static const size_t ResultLength = 4;
-	
-		template<typename T, size_t l>
-		Vector<T, ResultLength> operator()(const Vector<T, l>& in) const
-		{
-			BOOST_STATIC_ASSERT( l > x );
-			BOOST_STATIC_ASSERT( l > y );
-			BOOST_STATIC_ASSERT( l > z );
-			BOOST_STATIC_ASSERT( l > w );
-			Vector<T, ResultLength> result;
-			result[0] = in[ x ];
-			result[1] = in[ y ];
-			result[2] = in[ z ];
-			result[3] = in[ w ];
-
-			return result;
-		}
-	};
-
-	template<size_t x, size_t y, size_t z>
-	struct Curry3
-	{
-		static const size_t ResultLength = 3;
-	
-		template<typename T, size_t l>
-		Vector<T, ResultLength> operator()(const Vector<T, l>& in) const
-		{
-			BOOST_STATIC_ASSERT( l > x );
-			BOOST_STATIC_ASSERT( l > y );
-			BOOST_STATIC_ASSERT( l > z );
-			Vector<T, ResultLength> result;
-			result[0] = in[ x ];
-			result[1] = in[ y ];
-			result[2] = in[ z ];
-			
-			return result;
-		}
-	};
-
-	template<size_t x, size_t y>
-	struct Curry2
-	{
-		static const size_t ResultLength = 2;
-	
-		template<typename T, size_t l>
-		Vector<T, ResultLength> operator()(const Vector<T, l>& in) const
-		{
-			BOOST_STATIC_ASSERT( l > x );
-			BOOST_STATIC_ASSERT( l > y );
-			Vector<T, ResultLength> result;
-			result[0] = in[ x ];
-			result[1] = in[ y ];
-			return result;
-		}
-	};
-
-	namespace Views
-	{
-		#include "currys.h"
-	}
-
-	template<size_t x, size_t y, typename T>
-	typename boost::enable_if<
-		boost::is_arithmetic<T>, 
-		Vector<T, 2>
-	>::type operator|(T a, Curry2<x, y> c)
-	{
-		BOOST_STATIC_ASSERT(x == 0);
-		BOOST_STATIC_ASSERT(y == 0);
-		return Vector<T, 2>(a, a);
-	}
-
-	template<size_t x, size_t y, size_t z, typename T>
-	typename boost::enable_if<
-		boost::is_arithmetic<T>, 
-		Vector<T, 3>
-	>::type  operator|(T a, Curry3<x, y, z> c)
-	{
-		BOOST_STATIC_ASSERT(x == 0);
-		BOOST_STATIC_ASSERT(y == 0);
-		BOOST_STATIC_ASSERT(z == 0);
-		return Vector<T, 3>(a, a, a);
-	}
-
-	template<size_t x, size_t y, size_t z, size_t w, typename T>
-	typename boost::enable_if<
-		boost::is_arithmetic<T>, 
-		Vector<T, 4>
-	>::type  operator|(T a, Curry4<x, y, z, w> c)
-	{
-		BOOST_STATIC_ASSERT(x == 0);
-		BOOST_STATIC_ASSERT(y == 0);
-		BOOST_STATIC_ASSERT(z == 0);
-		BOOST_STATIC_ASSERT(w == 0);
-		return Vector<T, 4>(a, a, a, a);
-	}
-
-	//Type traits
 	template<typename T>
-	struct is_vector : boost::false_type
-	{};
-
-	template<typename T, size_t L>
-	struct is_vector< Vector<T, L> > : boost::true_type
-	{};
-	
-	template<typename T, size_t i>
-	std::ostream& operator<<(std::ostream& o, const Math::Vector<T, i>& t)
+	T dot(const GVector2<T>& a, const GVector2<T>& b)
 	{
-		o << '[';
-		for ( typename Math::Vector<T, i>::const_iterator it = t.begin(); it != t.end(); ++it)
-		{
-			if (it != t.begin())
-			{
-				o << ',';
-			}
-			o << *it;
-		}
-		o << ']';
-		return o;
+		return a.x * b.x + a.y * b.y;
 	}
 
-	template<typename T, size_t i>
-	std::wostream& operator<<(std::wostream& o, const Math::Vector<T, i>& t)
+	template<typename T>
+	T dot(const GVector3<T>& a, const GVector3<T>& b)
 	{
-		o << L'[';
-		for ( typename Math::Vector<T, i>::const_iterator it = t.begin(); it != t.end(); ++it)
-		{
-			if (it != t.begin())
-			{
-				o << L',';
-			}
-			o << *it;
-		}
-		o << L']';
+		return a.x * b.x + a.y * b.y + a.z * b.z;
+	}
+
+	template<typename T>
+	T dot(const GVector4<T>& a, const GVector4<T>& b)
+	{
+		return a.x * b.x + a.y * b.y + a.z * b.z;
+	}
+
+	template<typename T>
+	GVector3<T> cross(const GVector3<T>& a, const GVector3<T>& b)
+	{
+		T x = a.y * b.z - a.z * b.y;
+		T y = a.z * b.x - a.x * b.z;
+		T z = a.x * b.y - a.y * b.x;
+
+		return GVector3<T>(x, y, z);
+	}
+
+	template<typename T>
+	GVector4<T> cross(const GVector4<T>& a, const GVector4<T>& b)
+	{
+		T x = a.y * b.z - a.z * b.y;
+		T y = a.z * b.x - a.x * b.z;
+		T z = a.x * b.y - a.y * b.x;
+
+		return GVector4<T>(x, y, z, 1);
+	}
+
+	template<typename T>
+	std::ostream& operator<<(std::ostream& o, const GVector2<T>& a)
+	{
+		o << "[" << a.x <<", " << a.y << "]";
 		return o;
 	}
 }
-typedef Math::Vector<float, 2> Vector2;
-typedef Math::Vector<float, 3> Vector3;
-typedef Math::Vector<float, 4> Vector4;
 
-typedef __declspec(align(16)) Math::Vector<float, 2> Vector2A;
-typedef __declspec(align(16)) Math::Vector<float, 3> Vector3A;
-typedef __declspec(align(16)) Math::Vector<float, 4> Vector4A;
-#pragma warning(pop)
 
-#undef VECTOR_COMPARE_IMPL
-#undef VECTOR_MATH_IMPL
-#undef VECTOR_MATH_SCALAR_IMPL
-#endif
+typedef Math::GVector2<float> Vector2;
+typedef Math::GVector3<float> Vector3;
+typedef Math::GVector4<float> Vector4;

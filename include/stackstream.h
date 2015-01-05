@@ -112,6 +112,8 @@ namespace Engine
 					compiled = base->buffer;
 					return;
 				}
+
+				std::cout << "Create\n";
 				
 				compiled = scope->createArray<Ch>(length + 1);
 
@@ -123,6 +125,8 @@ namespace Engine
 					memcpy(compiled + written, current->buffer, sizeof(Ch) * current->length);
 					written += current->length;
 					current = current->next;
+
+					std::cout << "Written: " << written << "\n";
 				}
 
 				compiled[written] = '\0';

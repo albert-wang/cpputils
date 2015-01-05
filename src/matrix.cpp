@@ -27,10 +27,15 @@
 	DEFINE_SINGLE_OPERATOR(type, float, type, *) \
 	DEFINE_SINGLE_OPERATOR(type, float, type, -)
 
+bool fequals(float a, float b)
+{
+	return fabs(b - a) < 0.0005;
+}
+
 //The Matrix2 member functions
 #pragma region Matrix2
 
-Matrix2 Matrix2::identity() 
+Matrix2 Matrix2::identity()
 {
 	return Matrix2(
 		1, 0,
@@ -39,7 +44,7 @@ Matrix2 Matrix2::identity()
 
 //Requires a unit vector.
 /*
-	Constructs a matrix in the form: 
+	Constructs a matrix in the form:
 
 	| x^2 - y^2 | 2 * x * y |
 	| 2 * x * y | y^2 - x^2 |
@@ -49,7 +54,7 @@ Matrix2 Matrix2::identity()
 Matrix2 Matrix2::reflection(const Vector2& axis)
 {
 	return Matrix2(
-		axis[0] * axis[0] - axis[1] * axis[1], 2 * axis[0] * axis[1], 
+		axis[0] * axis[0] - axis[1] * axis[1], 2 * axis[0] * axis[1],
 		2 * axis[0] * axis[1], axis[1] * axis[1] - axis[0] * axis[0]);
 }
 
@@ -78,7 +83,6 @@ Matrix2 Matrix2::scale(float x, float y)
 		x, 0,
 		0, y);
 }
-
 
 Matrix2::Matrix2(const float x1, const float y1, const float x2, const float y2)
 {
@@ -160,7 +164,7 @@ Matrix2& Matrix2::operator-=(float rhv)
 	return *this;
 }
 
-Matrix2& Matrix2::componentMultiplyAndAssign(const Matrix2& rhv) 
+Matrix2& Matrix2::componentMultiplyAndAssign(const Matrix2& rhv)
 {
 	components[0] *= rhv.components[0];
 	components[1] *= rhv.components[1];
@@ -169,7 +173,7 @@ Matrix2& Matrix2::componentMultiplyAndAssign(const Matrix2& rhv)
 	return *this;
 }
 
-Matrix2& Matrix2::componentMultiplyAndAssign(float rhv) 
+Matrix2& Matrix2::componentMultiplyAndAssign(float rhv)
 {
 	components[0] *= rhv;
 	components[1] *= rhv;
@@ -178,21 +182,21 @@ Matrix2& Matrix2::componentMultiplyAndAssign(float rhv)
 	return *this;
 }
 
-Matrix2 Matrix2::componentMultiply(const Matrix2& rhv) const 
+Matrix2 Matrix2::componentMultiply(const Matrix2& rhv) const
 {
 	Matrix2 temp(*this);
 	temp.componentMultiplyAndAssign(rhv);
 	return temp;
 }
 
-Matrix2 Matrix2::componentMultiply(const float rhv) const 
+Matrix2 Matrix2::componentMultiply(const float rhv) const
 {
 	Matrix2 temp(*this);
 	temp.componentMultiplyAndAssign(rhv);
 	return temp;
 }
 
-Matrix2& Matrix2::operator*=(float rhv) 
+Matrix2& Matrix2::operator*=(float rhv)
 {
 	return componentMultiplyAndAssign(rhv);
 }
@@ -200,13 +204,13 @@ Matrix2& Matrix2::operator*=(float rhv)
 bool Matrix2::operator==(const Matrix2& rhv) const
 {
 	float totalEpsilon = abs((components[0] - rhv.components[0])) +
-						 abs((components[1] - rhv.components[1])) + 
+						 abs((components[1] - rhv.components[1])) +
 						 abs((components[2] - rhv.components[2])) +
 						 abs((components[3] - rhv.components[3]));
-	return (totalEpsilon < 0.0000001);
+	return fequals(totalEpsilon, 0.0f);
 }
 
-bool Matrix2::operator!=(const Matrix2& rhv) const 
+bool Matrix2::operator!=(const Matrix2& rhv) const
 {
 	return !((*this) == rhv);
 }
@@ -219,7 +223,7 @@ Matrix2& Matrix2::operator*=(const Matrix2& rhv)
 	float m12 = components[2] * rhv.components[0] + components[3] * rhv.components[2];
 	float m22 = components[2] * rhv.components[1] + components[3] * rhv.components[3];
 
-	set(m11, m21, 
+	set(m11, m21,
 		m12, m22);
 
 	return *this;
@@ -234,10 +238,10 @@ void Matrix2::invert()
 {
 	/*
 		2x2 Matrix inversion is done with the formula
-		
+
 		[ a b ]
 		[ c d ]
-		
+
 		1 / det * [d -b][-c a]
 	*/
 
@@ -297,11 +301,11 @@ void Matrix3::set(float x1, float x2, float x3,
 	components[0] = x1;
 	components[1] = x2;
 	components[2] = x3;
-			   
+
 	components[3] = y1;
 	components[4] = y2;
 	components[5] = y3;
-			   
+
 	components[6] = z1;
 	components[7] = z2;
 	components[8] = z3;
@@ -309,8 +313,8 @@ void Matrix3::set(float x1, float x2, float x3,
 
 void Matrix3::set(const Vector3& col1, const Vector3& col2, const Vector3& col3)
 {
-	set(col1[0], col2[0], col3[0], 
-		col1[1], col2[1], col3[1], 
+	set(col1[0], col2[0], col3[0],
+		col1[1], col2[1], col3[1],
 		col1[2], col2[2], col3[2]);
 }
 
@@ -345,11 +349,11 @@ Matrix3& Matrix3::operator+=(const Matrix3& rhv)
 	components[0] += rhv.components[0];
 	components[1] += rhv.components[1];
 	components[2] += rhv.components[2];
-						
+
 	components[3] += rhv.components[3];
 	components[4] += rhv.components[4];
 	components[5] += rhv.components[5];
-						
+
 	components[6] += rhv.components[6];
 	components[7] += rhv.components[7];
 	components[8] += rhv.components[8];
@@ -362,11 +366,11 @@ Matrix3& Matrix3::operator-=(const Matrix3& rhv)
 	components[0] -= rhv.components[0];
 	components[1] -= rhv.components[1];
 	components[2] -= rhv.components[2];
-				  
+
 	components[3] -= rhv.components[3];
 	components[4] -= rhv.components[4];
 	components[5] -= rhv.components[5];
-				  
+
 	components[6] -= rhv.components[6];
 	components[7] -= rhv.components[7];
 	components[8] -= rhv.components[8];
@@ -379,11 +383,11 @@ Matrix3& Matrix3::componentMultiplyAndAssign(const Matrix3& rhv)
 	components[0] *= rhv.components[0];
 	components[1] *= rhv.components[1];
 	components[2] *= rhv.components[2];
-				  
+
 	components[3] *= rhv.components[3];
 	components[4] *= rhv.components[4];
 	components[5] *= rhv.components[5];
-				  
+
 	components[6] *= rhv.components[6];
 	components[7] *= rhv.components[7];
 	components[8] *= rhv.components[8];
@@ -462,24 +466,24 @@ Matrix3& Matrix3::operator*=(const Matrix3 &rhv)
 	float z1 = c[6] * o[0] + c[7] * o[3] + c[8] * o[6];
 	float z2 = c[6] * o[1] + c[7] * o[4] + c[8] * o[7];
 	float z3 = c[6] * o[2] + c[7] * o[5] + c[8] * o[8];
-	
+
 	set(x1, x2, x3, y1, y2, y3, z1, z2, z3);
 	return (*this);
 }
 
 bool Matrix3::operator==(const Matrix3& rhv) const
 {
-	float totalEpsilon = 
-		abs((components[0] - rhv.components[0])) + 
-		abs((components[1] - rhv.components[1])) + 
-		abs((components[2] - rhv.components[2])) + 
-		abs((components[3] - rhv.components[3])) + 
+	float totalEpsilon =
+		abs((components[0] - rhv.components[0])) +
+		abs((components[1] - rhv.components[1])) +
+		abs((components[2] - rhv.components[2])) +
+		abs((components[3] - rhv.components[3])) +
 		abs((components[4] - rhv.components[4])) +
 		abs((components[5] - rhv.components[5])) +
 		abs((components[6] - rhv.components[6])) +
 		abs((components[7] - rhv.components[7])) +
 		abs((components[8] - rhv.components[8]));
-	return (totalEpsilon < 0.00000001);
+	return fequals(totalEpsilon, 0.0f);
 }
 
 bool Matrix3::operator!=(const Matrix3& rhv) const
@@ -490,8 +494,8 @@ bool Matrix3::operator!=(const Matrix3& rhv) const
 float Matrix3::getDeterminant() const
 {
 	const float * c = components;
-	float det = 
-		c[0] * c[4] * c[8] + c[1] * c[5] * c[6] + c[2] * c[3] * c[7] - 
+	float det =
+		c[0] * c[4] * c[8] + c[1] * c[5] * c[6] + c[2] * c[3] * c[7] -
 		c[2] * c[4] * c[6] - c[1] * c[3] * c[8] - c[0] * c[5] * c[7];
 	return det;
 }
@@ -515,7 +519,7 @@ void Matrix3::invert()
 
 	//ch - bk
 	float b = components[2] * components[7] - components[1] * components[8];
-	
+
 	//bf - ce
 	float c = components[1] * components[5] - components[2] * components[4];
 
@@ -537,8 +541,8 @@ void Matrix3::invert()
 	//ae - bd
 	float k = components[0] * components[4] - components[1] * components[3];
 
-	set(a, b, c, 
-		d, e, f, 
+	set(a, b, c,
+		d, e, f,
 		g, h, k);
 
 	componentMultiplyAndAssign(invdet);
@@ -563,29 +567,27 @@ Matrix3 Matrix3::reflection(const Vector3& in)
 	float b = in[1];
 	float c = in[2];
 	return Matrix3
-		(1 - 2 * a * 1, -2 * a * b, -2 * a * c, 
-		 -2 * a * b, 1 - 2 * b * b, -2 * b * c,  
+		(1 - 2 * a * 1, -2 * a * b, -2 * a * c,
+		 -2 * a * b, 1 - 2 * b * b, -2 * b * c,
 		 -2 * a * c, -2 * b * c, 1 - 2 * c * c);
 }
 
 Matrix3 Matrix3::rotation(float x, float y, float z)
 {
-	Matrix3 xRotation(
-		1, 0, 0,
-		0, cos(x), sin(x),
-		0, -sin(x), cos(x));
+	float cx = cos(x);
+	float sx = sin(x);
 
-	Matrix3 yRotation(
-		cos(y), 0, -sin(y),
-		0, 1, 0,
-		sin(y), 0, cos(y));
+	float cy = cos(y);
+	float sy = sin(y);
 
-	Matrix3 zRotation(
-		cos(z), sin(z), 0,
-		-sin(z), cos(z), 0,
-		0, 0, 1);
+	float cz = cos(z);
+	float sz = sin(z);
 
-	return xRotation * yRotation * zRotation;
+	return Matrix3(
+		cy * cz,    cx * sz + sx * sy * cz, sx * sz - cx * cz * sy,
+		-cy * sz,   cx * cz - sx * sy * sz, sx * cz + cx * sy * sz,
+		sy,         -sx * cy,               cx * cy
+	);
 }
 
 
@@ -612,7 +614,7 @@ Matrix3 Matrix3::scale(float amount)
 	return Matrix3::scale(amount, amount, amount);
 }
 
-Matrix3 Matrix3::face(const Vector3& d, const Vector3& up)
+Matrix3 Matrix3::face(const Vector3& d)
 {
 	//Generate a set of new basis vectors and use these.
 
@@ -664,25 +666,21 @@ Matrix4 Matrix4::reflection( const Vector4& in)
 
 Matrix4 Matrix4::rotation(float x, float y, float z)
 {
-	Matrix4 xRotation(
-		1, 0, 0, 0, 
-		0, cos(x), sin(x), 0,
-		0, -sin(x), cos(x), 0, 
-		0, 0, 0, 1);
+	float cx = cos(x);
+	float sx = sin(x);
 
-	Matrix4 yRotation(
-		cos(y), 0, -sin(y), 0,
-		0, 1, 0, 0,
-		sin(y), 0, cos(y), 0,
-		0, 0, 0, 1);
+	float cy = cos(y);
+	float sy = sin(y);
 
-	Matrix4 zRotation(
-		cos(z), sin(z), 0, 0,
-		-sin(z), cos(z), 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1);
+	float cz = cos(z);
+	float sz = sin(z);
 
-	return xRotation * yRotation * zRotation;
+	return Matrix4(
+		cy * cz,    cx * sz + sx * sy * cz, sx * sz - cx * cz * sy, 0,
+		-cy * sz,   cx * cz - sx * sy * sz, sx * cz + cx * sy * sz, 0,
+		sy,         -sx * cy,               cx * cy,                0,
+		0,          0,                      0,                      1
+	);
 }
 
 Matrix4 Matrix4::rotation(const Vector4& radians)
@@ -699,7 +697,7 @@ Matrix4 Matrix4::scale(float x, float y, float z)
 		0, 0, 0, 1);
 }
 
-Matrix4 Matrix4::face(const Vector4& d, const Vector4& up)
+Matrix4 Matrix4::face(const Vector4& d)
 {
 	Vector4 r = d.perpendicularTo();
 	Vector4 u = cross(d, r);
@@ -727,9 +725,9 @@ Matrix4::Matrix4(const float x1, const float x2, const float x3, const float x4
 				,const float z1, const float z2, const float z3, const float z4
 				,const float w1, const float w2, const float w3, const float w4)
 {
-	set(x1, x2, x3, x4, 
-		y1, y2, y3, y4, 
-		z1, z2, z3, z4, 
+	set(x1, x2, x3, x4,
+		y1, y2, y3, y4,
+		z1, z2, z3, z4,
 		w1, w2, w3, w4);
 }
 
@@ -774,7 +772,7 @@ void Matrix4::set(const Vector4 &col1, const Vector4 &col2, const Vector4 &col3,
 
 Matrix4::Matrix4()
 {
-	set(1, 0, 0, 0, 
+	set(1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0,
 		0, 0, 0, 1);
@@ -792,7 +790,7 @@ const float& Matrix4::operator ()(size_t y, size_t x) const
 	return components[y * 4 + x];
 }
 
-Matrix4& Matrix4::operator+=(const Matrix4& rhv) 
+Matrix4& Matrix4::operator+=(const Matrix4& rhv)
 {
 	for (size_t i = 0; i < 16; ++i)
 	{
@@ -801,7 +799,7 @@ Matrix4& Matrix4::operator+=(const Matrix4& rhv)
 	return *this;
 }
 
-Matrix4& Matrix4::operator-=(const Matrix4& rhv) 
+Matrix4& Matrix4::operator-=(const Matrix4& rhv)
 {
 	for (size_t i = 0; i < 16; ++i)
 	{
@@ -810,7 +808,7 @@ Matrix4& Matrix4::operator-=(const Matrix4& rhv)
 	return *this;
 }
 
-Matrix4& Matrix4::operator+=(float rhv) 
+Matrix4& Matrix4::operator+=(float rhv)
 {
 	for (size_t i = 0; i < 16; ++i)
 	{
@@ -819,7 +817,7 @@ Matrix4& Matrix4::operator+=(float rhv)
 	return *this;
 }
 
-Matrix4& Matrix4::operator-=(float rhv) 
+Matrix4& Matrix4::operator-=(float rhv)
 {
 	for (size_t i = 0; i < 16; ++i)
 	{
@@ -828,7 +826,7 @@ Matrix4& Matrix4::operator-=(float rhv)
 	return *this;
 }
 
-Matrix4& Matrix4::operator*=(float rhv) 
+Matrix4& Matrix4::operator*=(float rhv)
 {
 	for (size_t i = 0; i < 16; ++i)
 	{
@@ -871,24 +869,24 @@ Matrix4& Matrix4::componentMultiplyAndAssign(float rhv)
 
 bool Matrix4::operator==(const Matrix4& rhv) const
 {
-	float totalEpsilon = 
-		abs((components[0]  - rhv.components[0] )) + 
-		abs((components[1]  - rhv.components[1] )) + 
-		abs((components[2]  - rhv.components[2] )) + 
-		abs((components[3]  - rhv.components[3] )) + 
-		abs((components[4]  - rhv.components[4] )) + 
+	float totalEpsilon =
+		abs((components[0]  - rhv.components[0] )) +
+		abs((components[1]  - rhv.components[1] )) +
+		abs((components[2]  - rhv.components[2] )) +
+		abs((components[3]  - rhv.components[3] )) +
+		abs((components[4]  - rhv.components[4] )) +
 		abs((components[5]  - rhv.components[5] )) +
 		abs((components[6]  - rhv.components[6] )) +
 		abs((components[7]  - rhv.components[7] )) +
 		abs((components[8]  - rhv.components[8] )) +
 		abs((components[9]  - rhv.components[9] )) +
-		abs((components[10] - rhv.components[10])) + 
+		abs((components[10] - rhv.components[10])) +
 		abs((components[11] - rhv.components[11])) +
 		abs((components[12] - rhv.components[12])) +
 		abs((components[13] - rhv.components[13])) +
-		abs((components[14] - rhv.components[14])) + 
+		abs((components[14] - rhv.components[14])) +
 		abs((components[15] - rhv.components[15]));
-	return (totalEpsilon < 0.0000001);
+	return fequals(totalEpsilon, 0.0f);
 }
 
 bool Matrix4::operator!=(const Matrix4& rhv) const
@@ -905,7 +903,7 @@ Matrix4& Matrix4::operator*=(const Matrix4& rhv)
 	float x2 = c[0] * o[1] + c[1] * o[5] + c[2] * o[9] +  c[3] * o[13];
 	float x3 = c[0] * o[2] + c[1] * o[6] + c[2] * o[10] + c[3] * o[14];
 	float x4 = c[0] * o[3] + c[1] * o[7] + c[2] * o[11] + c[3] * o[15];
-	
+
 	float y1 = c[4] * o[0] + c[5] * o[4] + c[6] * o[8] +  c[7] * o[12];
 	float y2 = c[4] * o[1] + c[5] * o[5] + c[6] * o[9] +  c[7] * o[13];
 	float y3 = c[4] * o[2] + c[5] * o[6] + c[6] * o[10] + c[7] * o[14];
@@ -986,9 +984,9 @@ void Matrix4::invert()
 	result[15] = + components[ 8]*a3 - components[ 9]*a1 + components[10]*a0;
 
 
-	set(result[0], result[1], result[2], result[3], 
-		result[4], result[5], result[6], result[7], 
-		result[8], result[9], result[10], result[11], 
+	set(result[0], result[1], result[2], result[3],
+		result[4], result[5], result[6], result[7],
+		result[8], result[9], result[10], result[11],
 		result[12], result[13], result[14], result[15]);
 
 	componentMultiplyAndAssign(1 / det);
@@ -1033,6 +1031,30 @@ std::ostream& operator<<(std::ostream& o, const Matrix4& rhv)
 	return o;
 }
 
+std::wostream& operator<<(std::wostream& o, const Matrix2& rhv)
+{
+	o<<L"[["<<rhv(0,0)<<L","<<rhv(0,1)<<L"]["<<rhv(1,0)<<L","<<rhv(1,1)<<L"]]";
+	return o;
+}
+
+std::wostream& operator<<(std::wostream& o, const Matrix3& rhv)
+{
+	o<<L"[["<<rhv(0,0)<<L","<<rhv(0,1)<<L","<<rhv(0,2)<<L"]["<<
+		rhv(1,0)<<L","<<rhv(1,1)<<L","<<rhv(1,2)<<L"]["<<
+		rhv(2,0)<<L","<<rhv(2,1)<<L","<<rhv(2,2)<<L"]]";
+	return o;
+}
+
+std::wostream& operator<<(std::wostream& o, const Matrix4& rhv)
+{
+
+	o<<L"[["<<rhv(0,0)<<L","<<rhv(0,1)<<L","<<rhv(0,2)<<L","<<rhv(0,3)<<L"]["<<
+		rhv(1,0)<<L","<<rhv(1,1)<<L","<<rhv(1,2)<<L","<<rhv(1,3)<<L"]["<<
+		rhv(2,0)<<L","<<rhv(2,1)<<L","<<rhv(2,2)<<L","<<rhv(2,3)<<L"]["<<
+		rhv(3,0)<<L","<<rhv(3,1)<<L","<<rhv(3,2)<<L","<<rhv(3,3)<<L"]]";
+	return o;
+}
+
 Matrix3 augumentMatrix3(const Matrix2& rhv)
 {
 	Matrix3 result(rhv(0, 0), rhv(0, 1), 0,
@@ -1043,7 +1065,7 @@ Matrix3 augumentMatrix3(const Matrix2& rhv)
 
 Matrix4 augumentMatrix4(const Matrix3& rhv)
 {
-	Matrix4 result(rhv(0, 0), rhv(0, 1), rhv(0, 2), 0, 
+	Matrix4 result(rhv(0, 0), rhv(0, 1), rhv(0, 2), 0,
 				   rhv(1, 0), rhv(1, 1), rhv(1, 2), 0,
 				   rhv(2, 0), rhv(2, 1), rhv(2, 2), 0,
 				   0		, 0		   , 0		  , 1);
@@ -1088,4 +1110,5 @@ void setTranslation(Matrix4& m, const Vector4& trans)
 	m(3, 1) = trans[1];
 	m(3, 2) = trans[2];
 }
+
 #pragma endregion

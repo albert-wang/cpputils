@@ -20,13 +20,13 @@
 
 /*
 	The following classes implement 2x2, 3x3, and 4x4 square matrices.
-	These matrices are stored in row-major order; and can have that data 
+	These matrices are stored in row-major order; and can have that data
 	pulled from them by using .data().
 
 	Vectors are treated as column vectors.
 
 	The default constructor constructs the identity matrix.
-	
+
 	When indexing a matrix; the upper left corner is 0,0.
 	For a 4x4 Matrix; that means that the indexies are
 
@@ -86,7 +86,7 @@ public:
 	//Comparison
 	bool	operator==(const Matrix2&) const;
 	bool	operator!=(const Matrix2&) const;
-	
+
 	//Other Math
 	float getDeterminant()  const;
 	void invert();
@@ -111,7 +111,7 @@ public:
 	static Matrix3 scale(float x, float y, float z);
 	static Matrix3 scale(float amount);
 	static Matrix3 identity();
-	static Matrix3 face(const Vector3& dir, const Vector3& up);
+	static Matrix3 face(const Vector3& dir);
 
 	//Reflection against the plane m[0]*x + m[1]*y + m[2]*z = 0
 	static Matrix3 reflection( const Vector3& m );
@@ -123,7 +123,7 @@ public:
 	Matrix3(const Vector3& col1, const Vector3& col2, const Vector3& col3);
 	Matrix3();
 
-	
+
 	float& operator()(size_t x, size_t y);
 	const float& operator()(size_t x, size_t y) const;
 
@@ -174,15 +174,15 @@ public:
 	static Matrix4 translate(float x, float y, float z);
 	static Matrix4 translate(const Vector4& amount);
 	static Matrix4 reflection(const Vector4& m);
-	static Matrix4 face(const Vector4& dir, const Vector4& up);
-	
+	static Matrix4 face(const Vector4& dir);
+
 	friend  std::ostream& operator<<(std::ostream&, const Matrix4&);
 
 	Matrix4(float x1, float x2, float x3, float x4,
 			float y1, float y2, float y3, float y4,
 			float z1, float z2, float z3, float z4,
 			float w1, float w2, float w3, float w4);
-	
+
 	Matrix4(const Vector4& col1, const Vector4& col2, const Vector4& col3, const Vector4& col4);
 	Matrix4();
 
@@ -202,7 +202,7 @@ public:
 	//Multiplication
 	Matrix4& operator*=(float);
 	Matrix4& operator*=(const Matrix4&);
-	
+
 	//Comparison
 	bool	operator==(const Matrix4&) const;
 	bool	operator!=(const Matrix4&) const;
@@ -252,7 +252,7 @@ Matrix4 augumentMatrix4(const Matrix2&);
 Matrix4 augumentMatrix4(const Matrix3&);
 
 template<size_t N>
-Math::Vector<float, N> transform(const Math::Vector<float, N>& v, const typename Matrix<N>::type& t)
+typename Math::VectorTrait<float, N>::type transform(const typename Math::VectorTrait<float, N>::type& v, const typename Matrix<N>::type& t)
 {
 	return v * t;
 }
